@@ -4,15 +4,10 @@ import py4cytoscape as cyto
 import requests
 import pandas as pd
 import time
-if len(sys.argv) > 1:
-    input_filepath = sys.argv[1]
-else:
-    input_filepath = "diff/5s_vs_4s.gene_exp.diff"
-    print(f"using default file path: {input_filepath}")
 
 
 """
-Creates a Protien to Protien graph in Cytoscape for the given .diff file
+Creates a Protien to Protien graph in Cytoscape for the given .diff file. Requires Cytoscape to be running
 """
 
 def get_edge_data(nodes):
@@ -32,12 +27,21 @@ def get_edge_data(nodes):
     return df
 
 
+if len(sys.argv) > 1:
+    input_filepath = sys.argv[1]
+else:
+    input_filepath = "diff/5s_vs_4s.gene_exp.diff"
+    print(f"using default file path: {input_filepath}")
+
+
 nodes = top_n_differentially_regulated_genes(input_filepath, 30)
 nodes.rename(columns= {"gene_id" : "id"}, inplace= True)
 edges = get_edge_data(nodes)
 
-
-network_id = cyto.get_network_count()
+try:
+    network_id = cyto.get_network_count()
+except requests.exceptions.RequestException:
+    exit()
 
 cyto.create_network_from_data_frames(
     nodes=nodes,

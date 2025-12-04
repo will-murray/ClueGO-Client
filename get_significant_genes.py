@@ -1,22 +1,52 @@
 import numpy as np
 import pandas as pd
 import sys
+import matplotlib.pyplot as plt
 
-def top_n_differentially_regulated_genes(filepath, n = 30):
+def get_diffy_expressed_genes(filepath,n):
     """
-    Determines the top n differentially expressed genes from Cufflinks differential expression test file (https://cole-trapnell-lab.github.io/cufflinks/cuffdiff/#fpkm-tracking-format)
+    Transforms the cuffdiff dataframe specified at file_path to a pd:Dataframe with columns. Removes all rows with significance == no
+    -  gene_id
+    - log2(fold_change)
+    - z_norm_log2FC: Normalized FC based on rows from the input dataframe whose log2(fold_change) != -inf. I 
+    - p_value
+    - q_value
+
     """
-
-    D = pd.read_csv(filepath_or_buffer= filepath, delimiter="\t", header = 0)
-
-    D = D[D["significant"] == "yes"].copy() #check that this matters
-    D["log2(fold_change)"] = np.log2(D["value_1"] / D["value_2"]) # We want genes that are upregulated in treatment to have a positive FC
-    D["FC"] = D["value_1"] / D["value_2"]
+    D = pd.read_csv(filepath, delimiter="\t")
+    #remove all rows whose log2FC is inf
+    D = D.replace([float("inf"), float("-inf")], pd.NA).dropna(subset=["log2(fold_change)"])
     D["z_norm_log2FC"] = (D["log2(fold_change)"] - D["log2(fold_change)"].mean() ) / D["log2(fold_change)"].std()    
+    D = D[D["significant"] == "yes"]
 
-    D = D.sort_values(by = "z_norm_log2FC",key = lambda fc: abs(fc), ascending= False)
-    D = D.head(n).sort_values("z_norm_log2FC",ascending=False)
-
+    D = D[ ["gene_id", "log2(fold_change)", "z_norm_log2FC", "p_value", "q_value"] ]
+    D.sort_values("z_norm_log2FC",inplace=True,ascending=False)
+    
+    # print("upregulated:")
+    # print(D.head(n))
+    # print("downregulated:")
+    # print(D.tail(n))
+    # print("differentially regulated")
+    
+    D.sort_values(by="z_norm_log2FC", inplace=True, key = lambda x: abs(x))
     return D
+
+
+def main():
+    file = "diff/5s_vs_4s.gene_exp.diff"
+    n = 20
+    assert(len(sys.argv) in [1,2,3])
+    if len(sys.argv) == 1:
+        print(f"using default params:\n\tn ={n}\n\tinput file = {file}")
+    else:
+        file = sys.argv[1]
+        n = int(sys.argv[2])
+
+    D = get_diffy_expressed_genes(file,n)
+
+    print(D.head(n).to_string())
+
+if __name__ == "__main__":
+    main()
 
 
