@@ -9,7 +9,7 @@ import csv
 
 
 class ClueGoClient:
-    def __init__(self, name="CLUEGO client unnamed"):
+    def __init__(self, name="CLUEGO client unnamed",host_address ="localhost" ):
 
         self.EXAMPLE_NAME = name
         self.SEP = "/"
@@ -24,7 +24,7 @@ class ClueGoClient:
             self.HOME_FOLDER + self.SEP + "ClueGOConfiguration" + self.SEP + "v2.5.10"
         )
         self.PORT_NUMBER = "1234"
-        self.HOST_ADDRESS = "localhost"
+        self.HOST_ADDRESS = host_address
         self.HEADERS = {"Content-Type": "application/json"}
         # define base urls
         self.CYTOSCAPE_BASE_URL = (
@@ -50,6 +50,7 @@ class ClueGoClient:
 
     def __verify_cytoscape_connection(self):
         try:
+            print(self.CYTOSCAPE_BASE_URL)
             cy.cytoscape_ping(self.CYTOSCAPE_BASE_URL)
         except Exception as e:
             exit()
@@ -399,6 +400,7 @@ def color_with_FC(n):
     for idx, row in node_table.iterrows():
         genes = row.get("Associated Genes Found")
         if pd.notna(genes):
+            print(100*idx/node_table.shape[0])
             # ClueGO stores genes as a string like "[COX7A2, RPS29]"
             genes = genes.strip("[]")
             gene_list = [g.strip() for g in genes.split(",")]
@@ -407,6 +409,8 @@ def color_with_FC(n):
             if gene_list:
                 avg_fc = sum(D[g] for g in gene_list) / len(gene_list)
                 node_table.at[idx, "log2(fold_change)"] = avg_fc
+        
+
 
     node_table["log2(fold_change)"] = pd.to_numeric(
         node_table["log2(fold_change)"], errors="coerce"
@@ -428,15 +432,24 @@ gene_list = list(
 
 
 # global stuff
-client = ClueGoClient("test client")
+client = ClueGoClient("test client",host_address="host.docker.internal")
 client.set_organism("Homo Sapiens")
 client.set_number_of_clusters(1)
 client.set_ontologies("Nida")  # default
 
 client.set_gene_ids(gene_list)
-client.set_min_max_GO_levels(7,8)
-client.set_analysis_properties_for_cluster(1, 50)
+client.set_min_max_GO_levels(1,10,True)
+client.set_analysis_properties_for_cluster(1,50)
 
-client.run_analysis("Domer - level 7 - 8")
+client.run_analysis("30 pct membership - 6 genes")
 
-color_with_FC(n)
+
+
+# # for params in ["global", "medium" ,"semi-detailed", "detailed"]:
+# #     client.set_gene_ids(gene_list)
+# #     client.set_min_max_GO_levels(7,8)
+# #     client.set_analysis_properties_for_cluster(1, 50)
+
+# #     client.run_analysis(f"{n} | {params}")
+
+# #     color_with_FC(n)
