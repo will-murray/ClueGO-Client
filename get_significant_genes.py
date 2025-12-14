@@ -28,17 +28,17 @@ def get_diffy_expressed_genes(filepath):
     D = D.replace([float("inf"), float("-inf")], pd.NA).dropna(
         subset=["log2(fold_change)"]
     )
-    D["z_norm_log2FC"] = (D["log2(fold_change)"] - D["log2(fold_change)"].mean()) / D[
-        "log2(fold_change)"
-    ].std()
+    # D["z_norm_log2FC"] = (D["log2(fold_change)"] - D["log2(fold_change)"].mean()) / D[
+    #     "log2(fold_change)"
+    # ].std()
     D = D[D["significant"] == "yes"]
 
-    D = D[["gene_id", "log2(fold_change)", "z_norm_log2FC", "p_value", "q_value"]]
+    D = D[["gene_id", "log2(fold_change)", "p_value", "q_value"]]
 
     D.sort_values(
-        by="z_norm_log2FC", inplace=True, key=lambda x: abs(x), ascending=False
+        by="log2(fold_change)", inplace=True, key=lambda x: abs(x), ascending=False
     )
-    D["z_norm_log2FC"] = pd.to_numeric(D["z_norm_log2FC"], errors="coerce")
+    D["log2(fold_change)"] = pd.to_numeric(D["log2(fold_change)"], errors="coerce")
 
     return D
 
@@ -46,9 +46,9 @@ def get_diffy_expressed_genes(filepath):
 def make_heatmaps(D, n):
     n = min(n, 30)
 
-    D_abs = D.sort_values("z_norm_log2FC", key=lambda x: abs(x), ascending=False)
+    D_abs = D.sort_values("log2(fold_change)", key=lambda x: abs(x), ascending=False)
     sb.heatmap(
-        D_abs[["z_norm_log2FC"]].head(n).sort_values("z_norm_log2FC", ascending=False),
+        D_abs[["log2(fold_change)"]].head(n).sort_values("log2(fold_change)", ascending=False),
         yticklabels=D["gene_id"].head(n),
         cmap="Greens",
     )
@@ -59,7 +59,7 @@ def make_heatmaps(D, n):
 
 def make_histogram(D):
 
-    plt.hist(D["z_norm_log2FC"], bins=100)
+    plt.hist(D["log2(fold_change)"], bins=100)
     plt.title("Distrubution of Z-normalized Log2FC values")
     plt.savefig("figs/distribution of FC")
 
@@ -74,26 +74,23 @@ def count_significant_rows():
         "diff/5s_vs_4s.promoters.diff",
         "diff/5s_vs_4s.cds_exp.diff",
         "diff/5s_vs_4s.isoform_exp.diff",
-        "`diff/5s_vs_4s.splicing.diff",
+        "diff/5s_vs_4s.splicing.diff",
     ]
     for fname in files:
-        D = pd.read_csv(fname)
+        D = pd.read_csv(fname, delimiter="\t")
         name = fname.split(".")[1]
         total_row = D.shape[0]
-        sig_rows = D[D["significant"] == "yes"]
+        sig_rows = D[D["significant"] == "yes"].shape[0]
         print(f"{name} : {100*sig_rows/total_row}")
 
 
 def main():
     file = "diff/5s_vs_4s.gene_exp.diff"
-    n = 150
+    n = 50
     D = get_diffy_expressed_genes(file)
     make_histogram(D)
     make_heatmaps(D, n)
-
     print(D.head(n).to_string())
-    print(list(D["gene_id"].head(n)))
-    count_significant_rows()
 
 
 if __name__ == "__main__":
